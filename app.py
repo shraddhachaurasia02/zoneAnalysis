@@ -25,8 +25,7 @@ st.markdown("""
 * { font-family: 'Outfit', sans-serif; letter-spacing: -0.02em; }
 
 #MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
+
 
 .main {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
