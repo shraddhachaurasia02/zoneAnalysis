@@ -2,6 +2,7 @@ streamlit
 yfinance
 pandas
 numpy
-plotly
-matplotlib
 
+matplotlib
+streamlit>=1.22.0
+plotly>=5.0.0
