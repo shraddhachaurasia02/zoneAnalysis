@@ -35,16 +35,16 @@ if "ticker_index" not in st.session_state: st.session_state.ticker_index = 0
 st.markdown("""
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap">
 <style>
+    
     * { font-family: 'Outfit', sans-serif; letter-spacing: -0.02em; }
     
-    /* THEME AWARENESS - Light mode gets gradient, Dark mode gets clean background */
-    @media (prefers-color-scheme: light) {
-        .main { background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%) !important; }
-    }
-    @media (prefers-color-scheme: dark) {
-        .main { background: #0B1120 !important; }
-    }
+    /* Always Black Background */
+    .main { background: #0B1120 !important; }
     
+
+    
+  
+    .main { background: #0B1120 !important; }
     /* Compact Header */
     .main-header {
         background: rgba(255,255,255,0.1);
@@ -172,7 +172,19 @@ if run_btn:
         bar.progress((i + 1) / len(selected_tickers))
     st.session_state["scan_results"] = pd.DataFrame(findings) if findings else pd.DataFrame()
     status_text.empty(); bar.empty()
-
+    
+    # ================= NO ZONES FOUND MESSAGE =================
+    if st.session_state["scan_results"].empty:
+        st.warning("❌ **No Institutional Zones Found** with current parameters")
+        st.markdown("""
+        **🔧 Try adjusting these settings for better results:**
+        - Increase **Base Candle Count** (try 2-4)
+        - Increase **Leg-Out Candles** (try 3-5)  
+        - Lower **Exciting %** thresholds (try 45-50%)
+        - Change **Zone Status** to "Tested (Up to 2 times)"
+        - Select **Both** patterns instead of single pattern
+        - Disable **Strict Breakout** mode
+        """)
 
 # ================= VISUALIZATION =================
 if ("scan_results" in st.session_state and not st.session_state["scan_results"].empty) or (mode == "Single Stock"):
