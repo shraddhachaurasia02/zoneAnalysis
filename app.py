@@ -5,17 +5,45 @@ import pandas as pd
 from data import STOCK_GROUPS
 import streamlit.components.v1 as components
 
+
 # ================= PAGE CONFIG =================
 st.set_page_config(page_title="Institutional Zone Hunter", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
+st.markdown("""
+<style>
+    /* 💎 ADVANCED PARAMETERS - NEON GLOW STYLE */
+    [data-testid="stExpander"] {
+        background: rgba(255, 255, 255, 0.03) !important;
+        backdrop-filter: blur(15px) !important;
+        border: 1px solid rgba(236, 72, 153, 0.5) !important; /* Pink-Purple Neon Border */
+        border-radius: 20px !important;
+        box-shadow: 0 0 20px rgba(236, 72, 153, 0.15) !important; /* Subtle Outer Glow */
+        margin-top: 10px !important;
+    }
+
+    /* Expander ke andar ka arrow color white karne ke liye */
+    [data-testid="stExpander"] summary svg {
+        fill: white !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 
 if "ticker_index" not in st.session_state: st.session_state.ticker_index = 0
 
-# ================= ENHANCED CSS (LAYOUT TUNED) =================
+
+# ================= ENHANCED CSS (LAYOUT TUNED) + THEME AWARENESS =================
 st.markdown("""
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap">
 <style>
     * { font-family: 'Outfit', sans-serif; letter-spacing: -0.02em; }
-    .main { background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); }
+    
+    /* THEME AWARENESS - Light mode gets gradient, Dark mode gets clean background */
+    @media (prefers-color-scheme: light) {
+        .main { background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%) !important; }
+    }
+    @media (prefers-color-scheme: dark) {
+        .main { background: #0B1120 !important; }
+    }
     
     /* Compact Header */
     .main-header {
@@ -48,6 +76,7 @@ st.markdown("""
     .stock-name { font-size: 1.8rem; font-weight: 800; margin: 0; }
     .stock-price { font-size: 2.2rem; font-weight: 800; color: #4ade80; }
 
+
     /* Compact Metric Cards */
     .metric-card {
         background: rgba(255, 255, 255, 0.95);
@@ -66,11 +95,19 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
 # ================= SIDEBAR =================
 with st.sidebar:
-    st.markdown("### 🎯 Scanner Settings")
-    selected_group_name = st.selectbox("Select Index Universe", list(STOCK_GROUPS.keys()))
+    st.markdown("""
+        <div style="text-align: center; margin-top: -20px; margin-bottom: 10px;">
+            <img src="https://i.pinimg.com/1200x/65/56/d1/6556d1f996900f1b315db64ae955d524.jpg" 
+                 style="width: 250px; height: 150px; border-radius: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.8);">
+        </div>
+    """, unsafe_allow_html=True)
+    
+    selected_group_name = st.selectbox("Select Scrip", list(STOCK_GROUPS.keys()))
     active_stock_list = STOCK_GROUPS[selected_group_name]
+
 
     mode = st.radio("Selection Mode", ["Full List Scan", "Single Stock"])
     if mode == "Full List Scan":
@@ -79,21 +116,25 @@ with st.sidebar:
     else:
         selected_tickers = [st.selectbox("Choose Stock", active_stock_list)]
 
+
     st.divider()
     PERIOD = st.selectbox("📅 Lookback Period", ["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "max"], index=3)
     INTERVAL = st.selectbox("⏱️ Time Frame", ["1d", "1wk", "1mo", "3mo", "6mo"], index=0)
 
+
     BASE_UI_MODE = st.radio("Base Mode", ["Up to (≤)", "Exactly (=)"], horizontal=True)
     ENGINE_BASE_MODE = "exact" if BASE_UI_MODE == "Exactly (=)" else "upto"
-    BASE_COUNT = st.number_input("Base Count", min_value=1, max_value=6, value=3)
+    BASE_COUNT = st.number_input("Base Candle Count", min_value=1, max_value=6, value=3)
+
 
     LEGOUT_UI_MODE = st.radio("Leg-Out Mode", ["Up to (≤)", "Exactly (=)"], horizontal=True)
     ENGINE_LEGOUT_MODE = "exact" if LEGOUT_UI_MODE == "Exactly (=)" else "upto"
     LEGOUT_COUNT = st.slider("Leg-Out (Rally) Candles", 1, 20, 1)
   
-    ZONE_STATUS = st.selectbox("🔍 Zone Status", ["Fresh Only", "Tested (Up to 1 time)", "Tested (Up to 2 times)"], index=0)
-    ENABLE_ENTRY_FILTER = st.toggle("🚪 Entry Barrier Filter", value=True)
-    BUFFER = st.slider("Buffer %", 0, 20, 15, disabled=not ENABLE_ENTRY_FILTER)
+    ZONE_STATUS = st.selectbox("Zone Status", ["Fresh Only", "Tested (Up to 1 time)", "Tested (Up to 2 times)"], index=0)
+    ENABLE_ENTRY_FILTER = st.toggle("Entry Barrier Filter", value=True)
+    BUFFER = st.slider("Price Distance", 0, 20, 15, disabled=not ENABLE_ENTRY_FILTER)
+
 
     with st.expander("⚙️ Advanced"):
         PATTERN = st.selectbox("Pattern", ["RBR", "DBR", "Both"], index=2)
@@ -103,15 +144,19 @@ with st.sidebar:
         BS_THRESH = st.slider("Base Body %", 5, 50, 35)
         STRICT_MODE = st.toggle("Strict Breakout", value=True)
 
+
     run_btn = st.button("🔍 Scan Now", use_container_width=True, type="primary")
+
 
 # ================= MAIN HEADER =================
 st.markdown(f"""
+            
 <div class="main-header">
     <h1>📈 Institutional Zone Hunter</h1>
-    <p>Precision Supply & Demand Analysis for {selected_group_name}</p>
+    <p>Precision Demand Zone Analysis for {selected_group_name}</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 # ================= MAIN SCAN LOGIC =================
 if run_btn:
@@ -128,6 +173,7 @@ if run_btn:
     st.session_state["scan_results"] = pd.DataFrame(findings) if findings else pd.DataFrame()
     status_text.empty(); bar.empty()
 
+
 # ================= VISUALIZATION =================
 if ("scan_results" in st.session_state and not st.session_state["scan_results"].empty) or (mode == "Single Stock"):
     if "scan_results" in st.session_state and not st.session_state["scan_results"].empty:
@@ -137,11 +183,13 @@ if ("scan_results" in st.session_state and not st.session_state["scan_results"].
         for col, (lbl, val, icon) in zip([c1, c2, c3, c4], m_list):
             col.markdown(f'<div class="metric-card"><div class="metric-lbl">{icon} {lbl}</div><div class="metric-val">{val}</div></div>', unsafe_allow_html=True)
 
+
     tab1, tab2 = st.tabs(["📊 Interactive Dashboard", "📋 Raw Data Table"])
     
     with tab2:
         if "scan_results" in st.session_state and not st.session_state["scan_results"].empty:
             st.dataframe(st.session_state["scan_results"].drop(columns=['Formation_ID']), use_container_width=True, hide_index=True)
+
 
     with tab1:
         ticker_list = st.session_state["scan_results"]["Ticker"].unique().tolist() if "scan_results" in st.session_state and not st.session_state["scan_results"].empty else selected_tickers
@@ -158,6 +206,7 @@ if ("scan_results" in st.session_state and not st.session_state["scan_results"].
                 st.rerun()
         with nav_col2:
             sel_tick = st.selectbox("Select stock", options=ticker_list, index=min(st.session_state.ticker_index, len(ticker_list)-1), label_visibility="collapsed")
+
 
         stock, result, error = scan_stock(sel_tick, PERIOD, INTERVAL, PATTERN, BASE_COUNT, LEGOUT_COUNT, LEGIN_THRESH, LEGOUT_THRESH, BS_THRESH, STRICT_MODE, BUFFER, ENGINE_BASE_MODE, ENGINE_LEGOUT_MODE, ENABLE_ENTRY_FILTER, ZONE_STATUS, MARKING_TYPE)
         
@@ -182,8 +231,9 @@ if ("scan_results" in st.session_state and not st.session_state["scan_results"].
                     fig.add_shape(type="rect", x0=p['LegIn_Date'], x1=stock.index[-1], y0=p['Zone_Low'], y1=p['Zone_High'], fillcolor="rgba(102, 126, 234, 0.1)", line=dict(color="#667eea", width=2, dash="dash"))
             
             # Chart height set to 700 to maximize visibility while keeping controls on screen
-            fig.update_layout(height=700, margin=dict(t=10, b=10, l=0, r=0), xaxis_rangeslider_visible=False, template="plotly_dark", dragmode='pan', hovermode='x unified')
+            fig.update_layout(height=700, margin=dict(t=10, b=10, l=0, r=0), xaxis_rangeslider_visible=False, template="plotly_dark",paper_bgcolor="#0B1120",plot_bgcolor="#0B1120", dragmode='pan', hovermode='x unified')
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': True, 'scrollZoom': True})
+
 
 # ================= FOOTER =================
 st.markdown("<br><br>", unsafe_allow_html=True)
