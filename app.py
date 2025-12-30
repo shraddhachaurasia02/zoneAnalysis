@@ -5,8 +5,7 @@ import time
 from scanner import scan_stock
 from data import STOCK_GROUPS
 
-
-# ================= SESSION STATE INIT =================
+# ================= PAGE CONFIG FIRST (FIXED) =================
 if "is_scanning" not in st.session_state:
     st.session_state.is_scanning = False
 if "ticker_index" not in st.session_state: 
@@ -16,15 +15,9 @@ if "scan_results" not in st.session_state:
 if "visible_zones" not in st.session_state:
     st.session_state.visible_zones = {}
 
-
-# ================= PAGE CONFIG =================
-if st.session_state.is_scanning or not st.session_state["scan_results"].empty:
-    sidebar_config = "collapsed"
-else:
-    sidebar_config = "expanded"
-
+# FIXED: Set config AFTER session state initialization
+sidebar_config = "collapsed" if st.session_state.is_scanning or not st.session_state.scan_results.empty else "expanded"
 st.set_page_config(page_title="Institutional Zone Hunter", page_icon="📈", layout="wide", initial_sidebar_state=sidebar_config)
-
 
 # ================= ENHANCED CSS (Original + Stop Button Style) =================
 st.markdown("""
@@ -111,7 +104,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
 # ================= SIDEBAR =================
 with st.sidebar:
     st.markdown("""
@@ -121,9 +113,9 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
     
-    if not st.session_state["scan_results"].empty:
+    if not st.session_state.scan_results.empty:
         if st.button("🔄 Manual Reset Sidebar", use_container_width=True):
-            st.session_state["scan_results"] = pd.DataFrame()
+            st.session_state.scan_results = pd.DataFrame()
             st.session_state.is_scanning = False
             st.rerun()
 
@@ -203,7 +195,6 @@ with st.sidebar:
             st.session_state.is_scanning = False
             st.rerun()
 
-
 # ================= MAIN HEADER =================
 st.markdown(f"""
 <div class="main-header">
@@ -211,7 +202,6 @@ st.markdown(f"""
     <p>Precision Demand Zone Analysis for {selected_group_name if mode == "Full List Scan" else "Single Stock Search"}</p>
 </div>
 """, unsafe_allow_html=True)
-
 
 # ================= MAIN SCAN LOGIC =================
 if st.session_state.is_scanning:
@@ -227,14 +217,14 @@ if st.session_state.is_scanning:
                 else: row["Leg-In Date"] = p['LegIn_Date']
                 findings.append(row)
         bar.progress((i + 1) / len(scan_list))
-    st.session_state["scan_results"] = pd.DataFrame(findings) if findings else pd.DataFrame()
+    st.session_state.scan_results = pd.DataFrame(findings) if findings else pd.DataFrame()
     st.session_state.is_scanning = False
     st.rerun()
 
-
 # ================= VISUALIZATION =================
-if not st.session_state["scan_results"].empty:
-    df_res = st.session_state["scan_results"]; c1, c2, c3, c4 = st.columns(4)
+if not st.session_state.scan_results.empty:
+    df_res = st.session_state.scan_results
+    c1, c2, c3, c4 = st.columns(4)
     m_list = [("Total Zones", len(df_res), "🎯"), ("Unique Symbols", df_res['Company'].nunique(), "📊"), ("RBR Pattern", len(df_res[df_res['Pattern'] == 'Rally-Base-Rally']), "🟢"), ("DBR Pattern", len(df_res[df_res['Pattern'] == 'Drop-Base-Rally']), "🟡")]
     for col, (lbl, val, icon) in zip([c1, c2, c3, c4], m_list):
         col.markdown(f'<div class="metric-card"><div class="metric-lbl">{icon} {lbl}</div><div class="metric-val">{val}</div></div>', unsafe_allow_html=True)
@@ -242,7 +232,8 @@ if not st.session_state["scan_results"].empty:
     tab1, tab2 = st.tabs(["📊 Dashboard", "📋 Raw Data"])
     with tab2: st.dataframe(df_res, use_container_width=True, hide_index=True)
     with tab1:
-        ticker_list = df_res["Ticker"].unique().tolist(); nav1, nav2, nav3 = st.columns([1, 8, 1])
+        ticker_list = df_res["Ticker"].unique().tolist()
+        nav1, nav2, nav3 = st.columns([1, 8, 1])
         with nav1: 
             if st.button("⬅️"): st.session_state.ticker_index = (st.session_state.ticker_index - 1) % len(ticker_list); st.rerun()
         with nav3: 
@@ -253,7 +244,6 @@ if not st.session_state["scan_results"].empty:
         with col1:
             stock, result, error = scan_stock(sel_tick, PERIOD, HTF_INTERVAL, HTF_PATTERN, HTF_BASE_COUNT, HTF_LEGOUT_COUNT, HTF_LEGIN_THRESH, HTF_LEGOUT_THRESH, HTF_BS_THRESH, HTF_STRICT_MODE, HTF_BUFFER, ENGINE_BASE_MODE_HTF, ENGINE_LEGOUT_MODE_HTF, HTF_ENABLE_ENTRY_FILTER, HTF_ZONE_STATUS, HTF_MARKING_TYPE, LTF_INTERVAL, LTF_PATTERN, LTF_BASE_COUNT, LTF_LEGOUT_COUNT, LTF_LEGIN_THRESH, LTF_LEGOUT_THRESH, LTF_BS_THRESH, LTF_STRICT_MODE, LTF_BUFFER, ENGINE_BASE_MODE_LTF, ENGINE_LEGOUT_MODE_LTF, LTF_ENABLE_ENTRY_FILTER, LTF_ZONE_STATUS, LTF_MARKING_TYPE, ENABLE_CONFLUENCE)
         
-        # NEW: Check if zones found for this ticker
         zones_for_ticker = df_res[df_res['Ticker'] == sel_tick]
         if zones_for_ticker.empty:
             st.markdown("""
@@ -306,14 +296,12 @@ if not st.session_state["scan_results"].empty:
                     ]
                 })
 else:
-    # NEW: Empty results message
     st.markdown("""
     <div style="text-align: center; margin-top: 4rem; padding: 2rem;">
         <h2 style="color: rgba(255,255,255,0.8);">📈 No Scan Results</h2>
         <p style="color: rgba(255,255,255,0.6);">Click <strong>🔍 Scan Now</strong> to start analyzing stocks</p>
     </div>
     """, unsafe_allow_html=True)
-
 
 # ================= FOOTER =================
 st.markdown("<br><br>", unsafe_allow_html=True)
