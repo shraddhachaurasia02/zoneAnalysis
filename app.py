@@ -131,6 +131,14 @@ with st.sidebar:
 
     st.divider()
     PERIOD = st.selectbox("📅 Lookback Period", ["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "max"], index=3)
+
+    # --- NEW MODIFICATION: PRO FILTERS (SUPER EXCITING CANDLES) ---
+    st.markdown("🚀 **Pro Filters**")
+    ENABLE_SUPER_EXCITING = st.toggle("✨ Super Exciting Candles", value=False, 
+                                      help="Adds criteria: Candle Range (H-L) must be >= Average Range of recent candles.")
+    SUPER_LOOKBACK = st.number_input("Avg candle Lookback", 5, 100, 20, disabled=not ENABLE_SUPER_EXCITING)
+    st.divider()
+
     ENABLE_CONFLUENCE = st.toggle("🔄 Zone Confluence (HTF + LTF)", value=False)
     
     if ENABLE_CONFLUENCE:
@@ -207,17 +215,49 @@ st.markdown(f"""
 if st.session_state.is_scanning:
     scan_list = st.session_state.get('temp_tickers', [])
     findings, status_text, bar = [], st.empty(), st.progress(0)
+    
+    # NEW: Progressive results container
+    results_placeholder = st.empty()
+    
     for i, ticker in enumerate(scan_list):
         status_text.markdown(f"**🔍 Scanning {ticker.replace('.NS','')}** ({i+1}/{len(scan_list)})")
-        stock_df, result, error = scan_stock(ticker, PERIOD, HTF_INTERVAL, HTF_PATTERN, HTF_BASE_COUNT, HTF_LEGOUT_COUNT, HTF_LEGIN_THRESH, HTF_LEGOUT_THRESH, HTF_BS_THRESH, HTF_STRICT_MODE, HTF_BUFFER, ENGINE_BASE_MODE_HTF, ENGINE_LEGOUT_MODE_HTF, HTF_ENABLE_ENTRY_FILTER, HTF_ZONE_STATUS, HTF_MARKING_TYPE, LTF_INTERVAL, LTF_PATTERN, LTF_BASE_COUNT, LTF_LEGOUT_COUNT, LTF_LEGIN_THRESH, LTF_LEGOUT_THRESH, LTF_BS_THRESH, LTF_STRICT_MODE, LTF_BUFFER, ENGINE_BASE_MODE_LTF, ENGINE_LEGOUT_MODE_LTF, LTF_ENABLE_ENTRY_FILTER, LTF_ZONE_STATUS, LTF_MARKING_TYPE, ENABLE_CONFLUENCE)
+        
+        stock_df, result, error = scan_stock(
+            ticker, PERIOD, 
+            HTF_INTERVAL, HTF_PATTERN, HTF_BASE_COUNT, HTF_LEGOUT_COUNT, HTF_LEGIN_THRESH, HTF_LEGOUT_THRESH, HTF_BS_THRESH, HTF_STRICT_MODE, HTF_BUFFER, ENGINE_BASE_MODE_HTF, ENGINE_LEGOUT_MODE_HTF, HTF_ENABLE_ENTRY_FILTER, HTF_ZONE_STATUS, HTF_MARKING_TYPE, 
+            LTF_INTERVAL, LTF_PATTERN, LTF_BASE_COUNT, LTF_LEGOUT_COUNT, LTF_LEGIN_THRESH, LTF_LEGOUT_THRESH, LTF_BS_THRESH, LTF_STRICT_MODE, LTF_BUFFER, ENGINE_BASE_MODE_LTF, ENGINE_LEGOUT_MODE_LTF, LTF_ENABLE_ENTRY_FILTER, LTF_ZONE_STATUS, LTF_MARKING_TYPE, 
+            ENABLE_CONFLUENCE,
+            ENABLE_SUPER_EXCITING,
+            SUPER_LOOKBACK         
+        )
+        
         if result is not None and not result.empty:
             for _, p in result.iterrows():
                 row = {"Company": ticker.replace(".NS",""), "Pattern": p['Pattern_Found'], "Bases": p['Base_Count'], "LegOuts": p['LegOut_Count'], "Zone High": round(p['Zone_High'], 2), "Zone Low": round(p['Zone_Low'], 2), "Ticker": ticker, "Current Price": round(stock_df[f"Close_{ticker}"].iloc[-1], 2), "Tests": p['Tests']}
                 if ENABLE_CONFLUENCE: row["LTF Leg-In"], row["HTF Leg-In"] = p['LegIn_Date'], p.get('HTF_LegIn_Date', "N/A")
                 else: row["Leg-In Date"] = p['LegIn_Date']
                 findings.append(row)
+            
+            # --- PROGRESSIVE TABLE UPDATE ---
+            df_temp = pd.DataFrame(findings)
+            df_temp['LegOuts'] = pd.to_numeric(df_temp['LegOuts'], errors='coerce')
+            # Sort by LegOuts descending and keep only the first (highest) unique Company
+            df_live = df_temp.sort_values(by=['Company', 'LegOuts'], ascending=[True, False]).drop_duplicates(subset=['Company'], keep='first')
+            
+            with results_placeholder.container():
+                st.markdown("### ⚡ Live Discoveries")
+                st.dataframe(df_live, use_container_width=True, hide_index=True)
+
         bar.progress((i + 1) / len(scan_list))
-    st.session_state.scan_results = pd.DataFrame(findings) if findings else pd.DataFrame()
+    
+    # Store final processed results in session state
+    if findings:
+        df_final = pd.DataFrame(findings)
+        df_final['LegOuts'] = pd.to_numeric(df_final['LegOuts'], errors='coerce')
+        st.session_state.scan_results = df_final.sort_values(by=['Company', 'LegOuts'], ascending=[True, False]).drop_duplicates(subset=['Company'], keep='first')
+    else:
+        st.session_state.scan_results = pd.DataFrame()
+        
     st.session_state.is_scanning = False
     st.rerun()
 
@@ -242,7 +282,14 @@ if not st.session_state.scan_results.empty:
         
         col1, col2 = st.columns([3,1])
         with col1:
-            stock, result, error = scan_stock(sel_tick, PERIOD, HTF_INTERVAL, HTF_PATTERN, HTF_BASE_COUNT, HTF_LEGOUT_COUNT, HTF_LEGIN_THRESH, HTF_LEGOUT_THRESH, HTF_BS_THRESH, HTF_STRICT_MODE, HTF_BUFFER, ENGINE_BASE_MODE_HTF, ENGINE_LEGOUT_MODE_HTF, HTF_ENABLE_ENTRY_FILTER, HTF_ZONE_STATUS, HTF_MARKING_TYPE, LTF_INTERVAL, LTF_PATTERN, LTF_BASE_COUNT, LTF_LEGOUT_COUNT, LTF_LEGIN_THRESH, LTF_LEGOUT_THRESH, LTF_BS_THRESH, LTF_STRICT_MODE, LTF_BUFFER, ENGINE_BASE_MODE_LTF, ENGINE_LEGOUT_MODE_LTF, LTF_ENABLE_ENTRY_FILTER, LTF_ZONE_STATUS, LTF_MARKING_TYPE, ENABLE_CONFLUENCE)
+            stock, result, error = scan_stock(
+                sel_tick, PERIOD, 
+                HTF_INTERVAL, HTF_PATTERN, HTF_BASE_COUNT, HTF_LEGOUT_COUNT, HTF_LEGIN_THRESH, HTF_LEGOUT_THRESH, HTF_BS_THRESH, HTF_STRICT_MODE, HTF_BUFFER, ENGINE_BASE_MODE_HTF, ENGINE_LEGOUT_MODE_HTF, HTF_ENABLE_ENTRY_FILTER, HTF_ZONE_STATUS, HTF_MARKING_TYPE, 
+                LTF_INTERVAL, LTF_PATTERN, LTF_BASE_COUNT, LTF_LEGOUT_COUNT, LTF_LEGIN_THRESH, LTF_LEGOUT_THRESH, LTF_BS_THRESH, LTF_STRICT_MODE, LTF_BUFFER, ENGINE_BASE_MODE_LTF, ENGINE_LEGOUT_MODE_LTF, LTF_ENABLE_ENTRY_FILTER, LTF_ZONE_STATUS, LTF_MARKING_TYPE, 
+                ENABLE_CONFLUENCE,
+                ENABLE_SUPER_EXCITING,
+                SUPER_LOOKBACK         
+            )
         
         zones_for_ticker = df_res[df_res['Ticker'] == sel_tick]
         if zones_for_ticker.empty:
