@@ -2,8 +2,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 
-# Added "1y" to allowed intervals
-ALLOWED_INTERVALS = {"1d", "1wk", "1mo", "3mo", "6mo", "1y"}
+ALLOWED_INTERVALS = {"1d", "1wk", "1mo", "3mo", "6mo"}
 
 def get_resampled_data(TICKER, PERIOD, INTERVAL):
     """Fetches RAW data and ensures resampling alignment."""
@@ -23,8 +22,6 @@ def get_resampled_data(TICKER, PERIOD, INTERVAL):
             stock = monthly.resample('QS').agg(ohlc_dict).dropna()
         elif INTERVAL in ['6m', '6mo']:
             stock = monthly.resample('2QS').agg(ohlc_dict).dropna()
-        elif INTERVAL in ['1y', '1yr']:  # Added: Resamples monthly to Yearly candles
-            stock = monthly.resample('YS').agg(ohlc_dict).dropna()
         else:
             stock = monthly
     if isinstance(stock.columns, pd.MultiIndex):
