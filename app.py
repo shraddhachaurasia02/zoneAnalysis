@@ -77,7 +77,7 @@ st.markdown("""
     .stPlotlyChart { margin-top: -10px; }
     .footer { width: 100%; background: rgba(255, 255, 255, 0.05); padding: 2rem; border-radius: 24px; text-align: center; margin-top: 3rem; }
     
-    /* NEW: Stop button styling */
+    /* Stop button styling */
     div[data-testid="column"]:nth-child(2) div[class*="stButton"] > button {
         border: 2px solid #ef4444 !important;
         background-color: rgba(239, 68, 68, 0.2) !important;
@@ -132,7 +132,6 @@ with st.sidebar:
     st.divider()
     PERIOD = st.selectbox("📅 Lookback Period", ["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "max"], index=3)
 
-    # --- NEW MODIFICATION: PRO FILTERS (SUPER EXCITING CANDLES) ---
     st.markdown("🚀 **Pro Filters**")
     ENABLE_SUPER_EXCITING = st.toggle("✨ Super Exciting Candles", value=False, 
                                       help="Adds criteria: Candle Range (H-L) must be >= Average Range of recent candles.")
@@ -142,8 +141,9 @@ with st.sidebar:
     ENABLE_CONFLUENCE = st.toggle("🔄 Zone Confluence (HTF + LTF)", value=False)
     
     if ENABLE_CONFLUENCE:
-        HTF_INTERVAL = st.selectbox("Higher Timeframe (HTF)", ["1wk", "1mo", "3mo", "6mo"], index=1)
-        LTF_INTERVAL = st.selectbox("Lower Timeframe (LTF)", ["1d", "1wk", "1mo"], index=0)
+        # UPDATED: Added "1y" to both HTF and LTF
+        HTF_INTERVAL = st.selectbox("Higher Timeframe (HTF)", ["1wk", "1mo", "3mo", "6mo", "1y"], index=1)
+        LTF_INTERVAL = st.selectbox("Lower Timeframe (LTF)", ["1d", "1wk", "1mo", "3mo", "6mo", "1y"], index=0)
         with st.expander("📊 HTF Settings"):
             ENGINE_BASE_MODE_HTF = "exact" if st.radio("HTF Base Mode", ["Up to (≤)", "Exactly (=)"], key="htf_bm") == "Exactly (=)" else "upto"
             HTF_BASE_COUNT = st.number_input("HTF Base Count", 1, 6, 3, key="htf_bc")
@@ -173,7 +173,8 @@ with st.sidebar:
             LTF_BS_THRESH = st.slider("LTF Base Body %", 5, 50, 35, key="ltf_bst")
             LTF_STRICT_MODE = st.toggle("LTF Strict Breakout", True, key="ltf_sm")
     else:
-        INTERVAL = st.selectbox("⏱️ Time Frame", ["1d", "1wk", "1mo", "3mo", "6mo"], 0)
+        # UPDATED: Added "1y" here for standard mode
+        INTERVAL = st.selectbox("⏱️ Time Frame", ["1d", "1wk", "1mo", "3mo", "6mo", "1y"], 0)
         BASE_UI_MODE = st.radio("Base Mode", ["Up to (≤)", "Exactly (=)"], horizontal=True)
         ENGINE_BASE_MODE = "exact" if BASE_UI_MODE == "Exactly (=)" else "upto"
         BASE_COUNT = st.number_input("Base Candle Count", 1, 6, 3)
@@ -216,7 +217,6 @@ if st.session_state.is_scanning:
     scan_list = st.session_state.get('temp_tickers', [])
     findings, status_text, bar = [], st.empty(), st.progress(0)
     
-    # NEW: Progressive results container
     results_placeholder = st.empty()
     
     for i, ticker in enumerate(scan_list):
@@ -228,7 +228,7 @@ if st.session_state.is_scanning:
             LTF_INTERVAL, LTF_PATTERN, LTF_BASE_COUNT, LTF_LEGOUT_COUNT, LTF_LEGIN_THRESH, LTF_LEGOUT_THRESH, LTF_BS_THRESH, LTF_STRICT_MODE, LTF_BUFFER, ENGINE_BASE_MODE_LTF, ENGINE_LEGOUT_MODE_LTF, LTF_ENABLE_ENTRY_FILTER, LTF_ZONE_STATUS, LTF_MARKING_TYPE, 
             ENABLE_CONFLUENCE,
             ENABLE_SUPER_EXCITING,
-            SUPER_LOOKBACK         
+            SUPER_LOOKback         
         )
         
         if result is not None and not result.empty:
@@ -238,10 +238,8 @@ if st.session_state.is_scanning:
                 else: row["Leg-In Date"] = p['LegIn_Date']
                 findings.append(row)
             
-            # --- PROGRESSIVE TABLE UPDATE ---
             df_temp = pd.DataFrame(findings)
             df_temp['LegOuts'] = pd.to_numeric(df_temp['LegOuts'], errors='coerce')
-            # Sort by LegOuts descending and keep only the first (highest) unique Company
             df_live = df_temp.sort_values(by=['Company', 'LegOuts'], ascending=[True, False]).drop_duplicates(subset=['Company'], keep='first')
             
             with results_placeholder.container():
@@ -250,7 +248,6 @@ if st.session_state.is_scanning:
 
         bar.progress((i + 1) / len(scan_list))
     
-    # Store final processed results in session state
     if findings:
         df_final = pd.DataFrame(findings)
         df_final['LegOuts'] = pd.to_numeric(df_final['LegOuts'], errors='coerce')
@@ -335,13 +332,7 @@ if not st.session_state.scan_results.empty:
                     xaxis=dict(fixedrange=False), yaxis=dict(fixedrange=False),
                     dragmode='pan'
                 )
-                st.plotly_chart(fig, use_container_width=True, config={
-                    'scrollZoom': True,
-                    'modeBarButtonsToAdd': [
-                        'zoom2d', 'pan2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d',
-                        'drawrect', 'eraseshape'
-                    ]
-                })
+                st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True})
 else:
     st.markdown("""
     <div style="text-align: center; margin-top: 4rem; padding: 2rem;">
